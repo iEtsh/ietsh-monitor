@@ -104,5 +104,11 @@ def upload_state():
         print(f"Upload failed: {e}")
 
 if __name__ == "__main__":
+    print(f"=== Check at {__import__('datetime').datetime.now()} ===")
+    current = get_page_content()
+    print(f"Found {len(current)} puzzles")
+    if os.path.exists(STATE_FILE):
+        with open(STATE_FILE) as f:
+            print(f"Old state:\n{f.read()}")
     main()
     upload_state()
