@@ -1,6 +1,7 @@
-import requests
+nano monitor.pyimport requests
 from bs4 import BeautifulSoup
 import os
+import subprocess
 import smtplib
 from email.mime.text import MIMEText
 
@@ -80,3 +81,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+    subprocess.run(["git", "config", "--global", "user.email", "actions@github.com"])
+    subprocess.run(["git", "config", "--global", "user.name", "GitHub Actions"])
+    subprocess.run(["git", "add", "last_state.txt"])
+    subprocess.run(["git", "commit", "-m", "update state"])
+    subprocess.run(["git", "push"])
