@@ -1,4 +1,3 @@
-nano monitor.pyimport requests
 from bs4 import BeautifulSoup
 import os
 import subprocess
@@ -54,6 +53,53 @@ def main():
     current = get_page_content()
     if not current:
         return
+
+ nano 7.2                         monitor.py
+    msg["Subject"] = " M-( Rating changes on iEtsh puzzles"
+    msg["From"] = sender
+    msg["To"] = receiver
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(sender, password)
+        smtp.send_message(msg)
+
+def main():
+    current = get_page_content()
+    if not current:
+        return
+
+    old = {}
+    if os.path.exists(STATE_FILE):
+        with open(STATE_FILE, "r") as f:
+            for line in f:
+                if "|" in line:
+                    name, rating = line.strip().split("|", 1)
+                    try:
+                        old[name] = int(rating)
+                    except:
+                        old[name] = rating
+
+    changes = []
+    for name, new_rating in current.items():
+        old_rating = old.get(name)
+        if old_rating is not None and old_rating != new_rating:
+            changes.append(f"{name}'s rating changes from {old_rating} to {new_ratin>
+
+    if changes:
+        send_email(changes)
+
+    with open(STATE_FILE, "w") as f:
+        for name, rating in current.items():
+            f.write(f"{name}|{rating}\n")
+
+if __name__ == "__main__":
+    main()
+    subprocess.run(["git", "config", "--global", "user.email", "actions@github.com"])
+    subprocess.run(["git", "config", "--global", "user.name", "GitHub Actions"])
+    subprocess.run(["git", "add", "last_state.txt"])
+    subprocess.run(["git", "commit", "-m", "update state"])
+    subprocess.run(["git", "push"])
+
 
     old = {}
     if os.path.exists(STATE_FILE):
