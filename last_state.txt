@@ -1,4 +1,4 @@
-Blink IV|90
+Blink IV|88
 Blink III|76
 Blink II|86
 Vibrant Spots IV|82
@@ -15,6 +15,5 @@ Entropy Dominion|87
 No-Contact|87
 Arabesque|79
 Harry Potter 1: Chase! Hogwarts Express: Platform 9¾|80
-Evil Saboteurs|N/A
 15s|92
 The “It Should Work” Framework|82
