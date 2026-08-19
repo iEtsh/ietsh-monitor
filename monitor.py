@@ -111,11 +111,25 @@ def upload_state():
     token = os.environ["GH_TOKEN"]
     url = "https://api.github.com/repos/iEtsh/ietsh-monitor/contents/last_state.txt"
 
+    sha = None
+    try:
+        req = urllib.request.Request(url)
+        req.add_header("Authorization", f"token {token}")
+        req.add_header("Accept", "application/vnd.github.v3+json")
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read())
+            sha = data.get("sha")
+    except Exception:
+        pass
+
     data = {
         "message": "update state",
         "content": encoded,
         "branch": "main"
     }
+
+    if sha:
+        data["sha"] = sha
 
     req = urllib.request.Request(url, data=json.dumps(data).encode(), method="PUT")
     req.add_header("Authorization", f"token {token}")
