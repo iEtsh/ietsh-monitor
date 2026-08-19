@@ -1,5 +1,5 @@
-Blink IV|86
-Blink III|76
+Blink IV|84
+Blink III|77
 Blink II|86
 Vibrant Spots IV|82
 Vibrant Spots III|88
