@@ -10,6 +10,7 @@ import json
 
 URL = "https://logic-masters.de/Raetselportal/Benutzer/eingestellt.php?name=iEtsh"
 STATE_FILE = "last_state.txt"
+HISTORY_FILE = "rating_history.txt"
 
 
 def get_page_content():
@@ -83,6 +84,20 @@ def save_state(current):
             f.write(f"{name}|{rating}\n")
 
 
+def load_history():
+    if not os.path.exists(HISTORY_FILE):
+        return set()
+
+    with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+        return set(line.strip() for line in f if line.strip())
+
+
+def save_history(history):
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        for item in history:
+            f.write(f"{item}\n")
+
+
 def send_email(changes):
     sender = os.environ["EMAIL_USER"]
     password = os.environ["EMAIL_PASS"]
@@ -154,6 +169,7 @@ def main():
     print(f"Found {len(current)} puzzles")
 
     old = load_old_state()
+    history = load_history()
 
     print(f"Old state contains {len(old)} puzzles")
 
@@ -163,12 +179,18 @@ def main():
         old_rating = old.get(name)
 
         if old_rating is not None and old_rating != new_rating:
-            changes.append(
-                f"{name}'s rating changes from {old_rating}% to {new_rating}%."
-            )
+            change_key = f"{name}|{old_rating}->{new_rating}"
+
+            if change_key not in history:
+                changes.append(
+                    f"{name}'s rating changes from {old_rating}% to {new_rating}%."
+                )
+                history.add(change_key)
 
     save_state(current)
+    save_history(history)
     print("State file updated successfully.")
+    print("History updated successfully.")
 
     if changes:
         print("Rating changes detected:")
