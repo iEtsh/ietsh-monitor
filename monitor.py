@@ -75,3 +75,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    send_email(["✅ Test: Email is working!"])
