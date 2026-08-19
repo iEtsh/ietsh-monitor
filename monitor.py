@@ -75,4 +75,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-    send_email(["✅ Test: Email is working!"])
+    send_email(["Test from GitHub Actions!"])
+    print("Email sent!")
