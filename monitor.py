@@ -4,6 +4,9 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime
+import base64
+import urllib.request
+import json
 
 URL = "https://logic-masters.de/Raetselportal/Benutzer/eingestellt.php?name=iEtsh"
 STATE_FILE = "last_state.txt"
@@ -97,6 +100,34 @@ def send_email(changes):
         smtp.send_message(msg)
 
 
+def upload_state():
+    if not os.path.exists(STATE_FILE):
+        return
+
+    with open(STATE_FILE, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    encoded = base64.b64encode(content.encode()).decode()
+    token = os.environ["GH_TOKEN"]
+    url = "https://api.github.com/repos/iEtsh/ietsh-monitor/contents/last_state.txt"
+
+    data = {
+        "message": "update state",
+        "content": encoded,
+        "branch": "main"
+    }
+
+    req = urllib.request.Request(url, data=json.dumps(data).encode(), method="PUT")
+    req.add_header("Authorization", f"token {token}")
+    req.add_header("Accept", "application/vnd.github.v3+json")
+
+    try:
+        urllib.request.urlopen(req)
+        print("State uploaded successfully")
+    except Exception as e:
+        print(f"Upload failed: {e}")
+
+
 def main():
     print(f"=== Check at {datetime.now()} ===")
 
@@ -140,3 +171,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    upload_state()
