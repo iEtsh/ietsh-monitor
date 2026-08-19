@@ -167,6 +167,9 @@ def main():
                 f"{name}'s rating changes from {old_rating}% to {new_rating}%."
             )
 
+    save_state(current)
+    print("State file updated successfully.")
+
     if changes:
         print("Rating changes detected:")
 
@@ -178,9 +181,6 @@ def main():
 
     else:
         print("No rating changes.")
-
-    save_state(current)
-    print("State file updated successfully.")
 
 
 if __name__ == "__main__":
