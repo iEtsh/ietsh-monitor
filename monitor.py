@@ -119,16 +119,18 @@ def upload_state():
     if not os.path.exists(STATE_FILE):
         return
 
+    token = os.environ["GH_TOKEN"]
+    url = "https://api.github.com/repos/iEtsh/ietsh-monitor/contents/"
+
+    # رفع last_state.txt
     with open(STATE_FILE, "r", encoding="utf-8") as f:
         content = f.read()
 
     encoded = base64.b64encode(content.encode()).decode()
-    token = os.environ["GH_TOKEN"]
-    url = "https://api.github.com/repos/iEtsh/ietsh-monitor/contents/last_state.txt"
 
     sha = None
     try:
-        req = urllib.request.Request(url)
+        req = urllib.request.Request(url + "last_state.txt")
         req.add_header("Authorization", f"token {token}")
         req.add_header("Accept", "application/vnd.github.v3+json")
         with urllib.request.urlopen(req) as resp:
@@ -146,7 +148,7 @@ def upload_state():
     if sha:
         data["sha"] = sha
 
-    req = urllib.request.Request(url, data=json.dumps(data).encode(), method="PUT")
+    req = urllib.request.Request(url + "last_state.txt", data=json.dumps(data).encode(), method="PUT")
     req.add_header("Authorization", f"token {token}")
     req.add_header("Accept", "application/vnd.github.v3+json")
 
@@ -155,6 +157,43 @@ def upload_state():
         print("State uploaded successfully")
     except Exception as e:
         print(f"Upload failed: {e}")
+
+    # رفع rating_history.txt
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        encoded = base64.b64encode(content.encode()).decode()
+
+        sha = None
+        try:
+            req = urllib.request.Request(url + "rating_history.txt")
+            req.add_header("Authorization", f"token {token}")
+            req.add_header("Accept", "application/vnd.github.v3+json")
+            with urllib.request.urlopen(req) as resp:
+                data = json.loads(resp.read())
+                sha = data.get("sha")
+        except Exception:
+            pass
+
+        data = {
+            "message": "update history",
+            "content": encoded,
+            "branch": "main"
+        }
+
+        if sha:
+            data["sha"] = sha
+
+        req = urllib.request.Request(url + "rating_history.txt", data=json.dumps(data).encode(), method="PUT")
+        req.add_header("Authorization", f"token {token}")
+        req.add_header("Accept", "application/vnd.github.v3+json")
+
+        try:
+            urllib.request.urlopen(req)
+            print("History uploaded successfully")
+        except Exception as e:
+            print(f"Upload history failed: {e}")
 
 
 def main():
