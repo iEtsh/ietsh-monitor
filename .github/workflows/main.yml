@@ -13,10 +13,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache state file
+      - name: Cache state and history files
         uses: actions/cache@v4
         with:
-          path: last_state.txt
+          path: |
+            last_state.txt
+            rating_history.txt
           key: last-state
 
       - uses: actions/setup-python@v5
