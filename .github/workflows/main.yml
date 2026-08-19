@@ -2,7 +2,7 @@ name: Monitor iEtsh
 
 on:
   schedule:
-    - cron: "* * * * *"   # كل 5 دقايق
+    - cron: "* * * * *"
   workflow_dispatch:
 
 jobs:
@@ -10,9 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Cache state file
+        uses: actions/cache@v4
+        with:
+          path: last_state.txt
+          key: last-state
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - run: pip install -r requirements.txt
       - run: python monitor.py
         env:
