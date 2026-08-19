@@ -1,6 +1,5 @@
 import requests
 from bs4 import BeautifulSoup
-import hashlib
 import os
 import smtplib
 from email.mime.text import MIMEText
@@ -12,16 +11,22 @@ def get_page_content():
     r = requests.get(URL, headers={"User-Agent": "Mozilla/5.0"})
     r.raise_for_status()
     soup = BeautifulSoup(r.text, "html.parser")
-    table = soup.find("table", {"class": "result"})
+    table = soup.find("table", {"class": "rp_raetselliste"})
     if not table:
         return {}
     rows = table.find_all("tr")
     puzzles = {}
     for row in rows:
         cols = row.find_all("td")
-        if len(cols) >= 2:
-            name = cols[0].get_text(strip=True)
-            rating_text = cols[1].get_text(strip=True)
+        if len(cols) >= 4:
+            name_tag = cols[1].find("a")
+            if not name_tag:
+                continue
+            name = name_tag.get_text(strip=True)
+            rating_tag = cols[3].find("span")
+            if not rating_tag:
+                continue
+            rating_text = rating_tag.get_text(strip=True)
             try:
                 rating = int(rating_text.replace("%", "").strip())
             except:
@@ -36,7 +41,7 @@ def send_email(changes):
 
     lines = "\n".join(changes)
     msg = MIMEText(lines)
-    msg["Subject"] = "🚨 تغيير في تقييمات iEtsh"
+    msg["Subject"] = "🚨 Rating changes on iEtsh puzzles"
     msg["From"] = sender
     msg["To"] = receiver
 
@@ -75,5 +80,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    send_email(["Test from GitHub Actions!"])
-    print("Email sent!")
