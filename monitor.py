@@ -11,239 +11,137 @@ import json
 URL = "https://logic-masters.de/Raetselportal/Benutzer/eingestellt.php?name=iEtsh"
 STATE_FILE = "last_state.txt"
 HISTORY_FILE = "rating_history.txt"
+REPO = "iEtsh/ietsh-monitor"
+TOKEN = os.environ.get("GH_TOKEN", "")
+API = f"https://api.github.com/repos/{REPO}/contents/"
 
 
 def get_page_content():
-    r = requests.get(
-        URL,
-        headers={"User-Agent": "Mozilla/5.0"},
-        timeout=30
-    )
+    r = requests.get(URL, headers={"User-Agent": "Mozilla/5.0"}, timeout=30)
     r.raise_for_status()
-
     soup = BeautifulSoup(r.text, "html.parser")
     table = soup.find("table", {"class": "rp_raetselliste"})
-
     if not table:
         return {}
-
     puzzles = {}
-
     for row in table.find_all("tr"):
         cols = row.find_all("td")
-
         if len(cols) < 4:
             continue
-
         name_tag = cols[1].find("a")
         if not name_tag:
             continue
-
         name = name_tag.get_text(strip=True)
-
         rating_tag = cols[3].find("span")
         if not rating_tag:
             continue
-
         rating_text = rating_tag.get_text(strip=True)
-
         try:
             rating = int(rating_text.replace("%", "").strip())
         except ValueError:
             continue
-
         puzzles[name] = rating
-
     return puzzles
 
 
-def load_old_state():
+def github_get(path):
+    req = urllib.request.Request(API + path)
+    req.add_header("Authorization", f"token {TOKEN}")
+    req.add_header("Accept", "application/vnd.github.v3+json")
+    try:
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read())
+            content = data.get("content", "")
+            return base64.b64decode(content).decode("utf-8"), data.get("sha")
+    except Exception:
+        return None, None
+
+
+def github_put(path, content, sha=None, message="update"):
+    encoded = base64.b64encode(content.encode("utf-8")).decode()
+    data = {"message": message, "content": encoded, "branch": "main"}
+    if sha:
+        data["sha"] = sha
+    req = urllib.request.Request(API + path, data=json.dumps(data).encode(), method="PUT")
+    req.add_header("Authorization", f"token {TOKEN}")
+    req.add_header("Accept", "application/vnd.github.v3+json")
+    try:
+        urllib.request.urlopen(req)
+        return True
+    except Exception as e:
+        print(f"Upload failed for {path}: {e}")
+        return False
+
+
+def load_state_from_github():
+    content, _ = github_get(STATE_FILE)
+    if not content:
+        return {}
     old = {}
-
-    if not os.path.exists(STATE_FILE):
-        return old
-
-    with open(STATE_FILE, "r", encoding="utf-8") as f:
-        for line in f:
-            if "|" not in line:
-                continue
-
+    for line in content.splitlines():
+        if "|" in line:
             name, rating = line.strip().split("|", 1)
-
             try:
                 old[name] = int(rating)
             except ValueError:
-                continue
-
+                pass
     return old
 
 
-def save_state(current):
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
-        for name, rating in current.items():
-            f.write(f"{name}|{rating}\n")
-
-
-def load_history():
-    if not os.path.exists(HISTORY_FILE):
+def load_history_from_github():
+    content, _ = github_get(HISTORY_FILE)
+    if not content:
         return set()
-
-    with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-        return set(line.strip() for line in f if line.strip())
-
-
-def save_history(history):
-    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-        for item in history:
-            f.write(f"{item}\n")
+    return set(line.strip() for line in content.splitlines() if line.strip())
 
 
 def send_email(changes):
     sender = os.environ["EMAIL_USER"]
     password = os.environ["EMAIL_PASS"]
     receiver = sender
-
     lines = "\n".join(changes)
-
     msg = MIMEText(lines, "plain", "utf-8")
     msg["Subject"] = "🚨 Rating changes on iEtsh puzzles"
     msg["From"] = sender
     msg["To"] = receiver
-
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
         smtp.login(sender, password)
         smtp.send_message(msg)
 
 
-def upload_state():
-    if not os.path.exists(STATE_FILE):
-        return
-
-    token = os.environ["GH_TOKEN"]
-    url = "https://api.github.com/repos/iEtsh/ietsh-monitor/contents/"
-
-    # رفع last_state.txt
-    with open(STATE_FILE, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    encoded = base64.b64encode(content.encode()).decode()
-
-    sha = None
-    try:
-        req = urllib.request.Request(url + "last_state.txt")
-        req.add_header("Authorization", f"token {token}")
-        req.add_header("Accept", "application/vnd.github.v3+json")
-        with urllib.request.urlopen(req) as resp:
-            data = json.loads(resp.read())
-            sha = data.get("sha")
-    except Exception:
-        pass
-
-    data = {
-        "message": "update state",
-        "content": encoded,
-        "branch": "main"
-    }
-
-    if sha:
-        data["sha"] = sha
-
-    req = urllib.request.Request(url + "last_state.txt", data=json.dumps(data).encode(), method="PUT")
-    req.add_header("Authorization", f"token {token}")
-    req.add_header("Accept", "application/vnd.github.v3+json")
-
-    try:
-        urllib.request.urlopen(req)
-        print("State uploaded successfully")
-    except Exception as e:
-        print(f"Upload failed: {e}")
-
-    # رفع rating_history.txt
-    if os.path.exists(HISTORY_FILE):
-        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-            content = f.read()
-
-        encoded = base64.b64encode(content.encode()).decode()
-
-        sha = None
-        try:
-            req = urllib.request.Request(url + "rating_history.txt")
-            req.add_header("Authorization", f"token {token}")
-            req.add_header("Accept", "application/vnd.github.v3+json")
-            with urllib.request.urlopen(req) as resp:
-                data = json.loads(resp.read())
-                sha = data.get("sha")
-        except Exception:
-            pass
-
-        data = {
-            "message": "update history",
-            "content": encoded,
-            "branch": "main"
-        }
-
-        if sha:
-            data["sha"] = sha
-
-        req = urllib.request.Request(url + "rating_history.txt", data=json.dumps(data).encode(), method="PUT")
-        req.add_header("Authorization", f"token {token}")
-        req.add_header("Accept", "application/vnd.github.v3+json")
-
-        try:
-            urllib.request.urlopen(req)
-            print("History uploaded successfully")
-        except Exception as e:
-            print(f"Upload history failed: {e}")
-
-
 def main():
     print(f"=== Check at {datetime.now()} ===")
-
     current = get_page_content()
-
     if not current:
-        print("Could not find any puzzles. State will NOT be changed.")
+        print("No puzzles found")
         return
 
-    print(f"Found {len(current)} puzzles")
-
-    old = load_old_state()
-    history = load_history()
-
-    print(f"Old state contains {len(old)} puzzles")
+    old = load_state_from_github()
+    history = load_history_from_github()
 
     changes = []
-
     for name, new_rating in current.items():
         old_rating = old.get(name)
-
         if old_rating is not None and old_rating != new_rating:
             change_key = f"{name}|{old_rating}->{new_rating}"
-
             if change_key not in history:
-                changes.append(
-                    f"{name}'s rating changes from {old_rating}% to {new_rating}%."
-                )
+                changes.append(f"{name}'s rating changes from {old_rating}% to {new_rating}%.")
                 history.add(change_key)
 
-    save_state(current)
-    save_history(history)
-    print("State file updated successfully.")
-    print("History updated successfully.")
+    state_content = "\n".join(f"{n}|{r}" for n, r in current.items()) + "\n"
+    history_content = "\n".join(sorted(history)) + "\n"
+
+    github_put(STATE_FILE, state_content, message="update state")
+    github_put(HISTORY_FILE, history_content, message="update history")
 
     if changes:
-        print("Rating changes detected:")
-
-        for change in changes:
-            print(change)
-
         send_email(changes)
-        print("Email sent successfully.")
-
+        print("Email sent for changes:")
+        for c in changes:
+            print(c)
     else:
-        print("No rating changes.")
+        print("No new rating changes.")
 
 
 if __name__ == "__main__":
     main()
-    upload_state()
