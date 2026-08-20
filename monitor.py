@@ -135,7 +135,7 @@ def main():
     github_put(HISTORY_FILE, history_content, message="update history")
 
     if changes:
-        send_email(changes)
+      # send_email(changes)
         print("Email sent for changes:")
         for c in changes:
             print(c)
